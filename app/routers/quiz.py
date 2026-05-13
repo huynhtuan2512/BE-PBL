@@ -119,3 +119,35 @@ async def delete_quiz_result(
         raise HTTPException(status_code=404, detail=f"Không tìm thấy quiz #{quiz_id}")
     db.delete(row)
     db.commit()
+
+aync def delete_all_quiz_results(
+    db: Session = Depends(get_db),
+    user_id: int = Query(1),
+):
+    from app.models.quiz_result import QuizResult as QuizResultModel
+    rows = (
+        db.query(QuizResultModel)
+        .filter(QuizResultModel.user_id == user_id)
+        .all()
+    )
+    for row in rows:
+        db.delete(row)
+    db.commit()
+
+async def delete_quiz_results_by_type(
+    quiz_type: QuizType,
+    db: Session = Depends(get_db),
+    user_id: int = Query(1),
+):
+    from app.models.quiz_result import QuizResult as QuizResultModel
+    rows = (
+        db.query(QuizResultModel)
+        .filter(
+            QuizResultModel.user_id == user_id,
+            QuizResultModel.quiz_type == quiz_type.value,
+        )
+        .all()
+    )
+    for row in rows:
+        db.delete(row)
+    db.commit()
