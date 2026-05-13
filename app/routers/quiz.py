@@ -97,7 +97,7 @@ async def get_quiz_stats(
 
 @router.delete(
     "/history/{quiz_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_203_NO_CONTENT,
     summary="Xóa kết quả quiz",
     description="",
 )
@@ -106,12 +106,6 @@ async def delete_quiz_result(
     db: Session = Depends(get_db),
     user_id: int = Query(1),
 ):
-    from app.models.quiz_result import QuizResult as QuizResultModel
-    row = (
-        db.query(QuizResultModel)
-        .filter(
-            QuizResultModel.quiz_id == quiz_id,
-            QuizResultModel.user_id == user_id,
         )
         .first()
     )
@@ -120,34 +114,3 @@ async def delete_quiz_result(
     db.delete(row)
     db.commit()
 
-aync def delete_all_quiz_results(
-    db: Session = Depends(get_db),
-    user_id: int = Query(1),
-):
-    from app.models.quiz_result import QuizResult as QuizResultModel
-    rows = (
-        db.query(QuizResultModel)
-        .filter(QuizResultModel.user_id == user_id)
-        .all()
-    )
-    for row in rows:
-        db.delete(row)
-    db.commit()
-
-async def delete_quiz_results_by_type(
-    quiz_type: QuizType,
-    db: Session = Depends(get_db),
-    user_id: int = Query(1),
-):
-    from app.models.quiz_result import QuizResult as QuizResultModel
-    rows = (
-        db.query(QuizResultModel)
-        .filter(
-            QuizResultModel.user_id == user_id,
-            QuizResultModel.quiz_type == quiz_type.value,
-        )
-        .all()
-    )
-    for row in rows:
-        db.delete(row)
-    db.commit()

@@ -63,14 +63,12 @@ async def get_history_summary(
 @router.get("/history/{history_id}", response_model=HistoryItem, summary="Chi tiết 1 bản ghi lịch sử")
 async def get_history_item(
     history_id: int,
-    db: Session = Depends(get_db),
     user_id: int = Query(1),
 ):
     record = history_service.get_history_by_id(db=db, history_id=history_id, user_id=user_id)
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy bản ghi #{history_id}",
         )
     return history_service._to_item(record)
 
@@ -85,7 +83,6 @@ async def create_history_manually(
         user_id=body.user_id,
         object_name_en=body.object_name_en,
         object_name_vn=body.object_name_vn or body.object_name_en,
-        confidence=body.confidence or 0.0,
         session_type=body.session_type,
         duration_seconds=body.duration_seconds,
     )
@@ -95,13 +92,12 @@ async def create_history_manually(
 @router.delete("/history/{history_id}", response_model=HistoryDeleteResponse, summary="Xoá 1 bản ghi lịch sử")
 async def delete_history_item(
     history_id: int,
-    db: Session = Depends(get_db),
     user_id: int = Query(1),
 ):
     deleted = history_service.delete_history(db=db, history_id=history_id, user_id=user_id)
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_405_NOT_FOUND,
             detail=f"Không tìm thấy bản ghi #{history_id}",
         )
     return HistoryDeleteResponse(
@@ -111,13 +107,13 @@ async def delete_history_item(
     )
 
 
-@router.delete("/history", response_model=HistoryDeleteResponse, summary="Xoá toàn bộ lịch sử")
+@router.delete("/historyer", response_model=HistoryDeleteResponse, summary="Xoá toàn bộ lịch sử")
 async def delete_all_history(
     db: Session = Depends(get_db),
     user_id: int = Query(1),
 ):
     count = history_service.delete_all_history(db=db, user_id=user_id)
-    return HistoryDeleteResponse(
+    return HistoryResponse(
         success=True,
         deleted_count=count,
         message=f"Đã xoá {count} bản ghi của user {user_id}",
