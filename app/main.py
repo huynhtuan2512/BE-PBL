@@ -1,62 +1,22 @@
-import asyncio
-import base64
-import time as time_module
-from datetime import datetime
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-import os
-from contextlib import asynccontextmanager
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.database import create_tables
-from app.core.websocket_manager import manager
-from app.services.yolo_service import yolo_service
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Starting English Object Recognition API...")
-    print(f"Server running on http://{settings.HOST}:{settings.PORT}")
-
-    # Tạo database tables
-    try:
-        create_tables()
-    except Exception as e:
-        print(f"Warning: Could not create tables: {e}")
-
-    # Seed dữ liệu
-    try:
-        from app.core.seed import seed_object_dictionary, seed_default_user
-        from app.core.database import SessionLocal
-        db = SessionLocal()
-        seed_default_user(db)       # ← tạo user test trước
-        seed_object_dictionary(db)  # ← sau đó seed objects
-        db.close()
-    except Exception as e:
-        print(f"Seed data warning: {e}")
-
-    # Load YOLO model
-    try:
-        if yolo_service.model is None:
-            print("Loading YOLO model... (this may take a few seconds)")
-        else:
-            print("YOLO model already loaded")
-    except Exception as e:
-        print(f"Could not load YOLO model: {e}")
-
-    yield
-    print("Shutting down API...")
-
+from app.routers.auth_router import router as auth_router
+from app.routers.content_router import router as content_router
+from app.routers.user_router import router as user_router
+from app.routers.progress_router import router as progress_router
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="Backend API cho hệ thống học tiếng Anh qua nhận diện đồ vật",
+    title=settings.APP_NAME,
     version="1.0.0",
-    lifespan=lifespan
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
+# ── CORS ──────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -65,70 +25,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-os.makedirs("app/static/audio", exist_ok=True)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# ── Global Exception Handler ─────────────────────────────────
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Lỗi server, vui lòng thử lại sau."},
+    )
 
-# Import routers sau khi app được tạo
-from app.routers import status, detect, speak, history, quiz, object, auth
+# ── Routers ──────────────────────────────────────────────────
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(content_router, prefix="/api/v1")
+app.include_router(user_router, prefix="/api/v1")
+app.include_router(progress_router, prefix="/api/v1")
 
-app.include_router(status.router)
-app.include_router(detect.router)
-app.include_router(speak.router)
-app.include_router(history.router)
-app.include_router(quiz.router)
-app.include_router(object.router)
-app.include_router(auth.router)
-
-@app.get("/")
-async def root():
-    return {
-        "message": "English Object Recognition Learning System API is running",
-        "docs": "/docs",
-        "status": "/api/v1/status"
-    }
-
-
-@app.websocket("/api/v1/ws/detect")
-async def websocket_detect(websocket: WebSocket):
-    await manager.connect_cam(websocket)
-    last_processed_time = 0.0
-    try:
-        while True:
-            data = await websocket.receive_bytes()
-            now = time_module.time()
-            if now - last_processed_time < 0.083:
-                continue
-            last_processed_time = now
-            result = await asyncio.to_thread(yolo_service.detect_objects, data)
-            detections = result.get("detections", [])
-            base64_image = base64.b64encode(data).decode()
-            await manager.broadcast_to_app({
-                "type": "detection",
-                "image": base64_image,
-                "image_width": 320,
-                "image_height": 240,
-                "detections": detections,
-                "timestamp": datetime.now().isoformat()
-            })
-    except WebSocketDisconnect:
-        manager.disconnect_cam(websocket)
-    except Exception as e:
-        print(f"Cam Error: {e}")
-        manager.disconnect_cam(websocket)
-
-
-@app.websocket("/api/v1/ws/app")
-async def websocket_app(websocket: WebSocket):
-    await manager.connect_app(websocket)
-    try:
-        while True:
-            await websocket.receive_text()
-    except Exception as e:
-        print(f"WebSocket App error: {e}")
-    finally:
-        manager.disconnect_app(websocket)
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
+# ── Health Check ─────────────────────────────────────────────
+@app.get("/health", tags=["System"])
+async def health_check() -> dict:
+    return {"status": "ok", "app": settings.APP_NAME}
