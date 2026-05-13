@@ -20,7 +20,7 @@ class LearningHistory(Base):
 
     # Snapshot tên tại thời điểm học
     object_name_en = Column(String(100), nullable=False)
-    object_name_vn = Column(String(100), nullable=True)
+    object_name_vn = Column(String(100), nullable=True, default=None)
 
     # Conf
     confidence = Column(Float, nullable=True)

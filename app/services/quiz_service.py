@@ -25,7 +25,7 @@ _session_store: Dict[str, List[QuizQuestion]] = {}
 FALLBACK_OBJECTS = [
     "cat", "dog", "book", "chair", "bottle",
     "cup", "laptop", "clock", "apple", "banana",
-    "car", "bird", "backpack", "keyboard", "cell phone"
+    "car", "bird", "backpack", "keyboard", "cell phone",
 ]
 
 
