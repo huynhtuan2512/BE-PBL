@@ -9,7 +9,7 @@ class ObjectDictionary(Base):
     class_name_vn = Column(String, nullable=False)
     example_sentence_en = Column(Text)
     pronunciation_ipa = Column(String)
-    audio_file_path = Column(String, nullable=True)
+    audio_file_path = Column(String, nullable=True, default=None)
 
     # Relationships
     learning_histories = relationship("LearningHistory", back_populates="object_dict", foreign_keys="LearningHistory.object_id")

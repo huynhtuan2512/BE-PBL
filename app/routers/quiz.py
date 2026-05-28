@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/v1/quiz", tags=["Quiz"])
     "/generate",
     response_model=QuizSessionResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Tạo bộ câu hỏi quiz",
+    summary="Tạo bộ ",
     description="",
 )
 async def generate_quiz(
